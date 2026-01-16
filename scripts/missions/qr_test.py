@@ -61,7 +61,7 @@ class QRTest(Node):
         # Parameters
         self.kp = 0.05
         self.max_vel = 1.0
-        self.land_threshold = 15.0  
+        self.land_threshold = 10.0  # center within 10 pixels
         self.required_stable_time = 2.0 
         self.descend_speed = -0.3     # m/s
         self.ascend_speed  =  0.4     # m/s
@@ -162,7 +162,7 @@ class QRTest(Node):
 
         """
 
-        self.get_logger().info(f"Going to GPS -> lat={latitude}, lon={longitude}, alt={altitude}")
+        self.get_logger().info(f"Going to GPS -> lat={latitude:.2f}, lon={longitude:.2f}, alt={altitude}")
 
         target = GeoPoseStamped()
 
@@ -224,11 +224,9 @@ class QRTest(Node):
             return False
 
 
-
     def trigger_final_land(self):
         if self.final_land_triggered:
             return
-        self.set_mode("LAND")
         self.final_land_triggered = True
         self.mission_complete = True
     
@@ -256,8 +254,8 @@ class QRTest(Node):
         current_alt = self.current_pose.pose.position.z
 
         #  PARAMETERS 
-        kp_xy = 0.005
-        kd_xy = 0.020
+        kp_xy = 0.010
+        kd_xy = 0.005
 
         xy_deadband = 10          # pixels
         max_xy_vel = 0.8
@@ -287,6 +285,20 @@ class QRTest(Node):
             self.err_x = cx - cx_img
             self.err_y = cy - cy_img
 
+            kp_yaw = 0.005
+            max_yaw_rate = 0.4
+            yaw_deadband = 20  # pixels
+
+            # Yaw control
+            if abs(self.err_x) > yaw_deadband:
+                yaw_rate = -kp_yaw * self.err_x
+                yaw_rate = max(min(yaw_rate, max_yaw_rate), -max_yaw_rate)
+            else:
+                yaw_rate = 0.0
+            
+            vel_cmd.twist.angular.z = yaw_rate
+
+
             # Deadband
             if abs(self.err_x) < xy_deadband:
                 self.err_x = 0.0
@@ -300,9 +312,29 @@ class QRTest(Node):
             self.prev_err_x = self.err_x
             self.prev_err_y = self.err_y
 
-            # PD control
-            vx = -(kp_xy * self.err_x + kd_xy * derr_x)
-            vy =  (kp_xy * self.err_y + kd_xy * derr_y)
+            vx = 0
+            vy = 0
+
+            yaw_aligned = abs(self.err_x) < yaw_deadband
+
+            vx = 0.0
+            vy = 0.0
+
+            if yaw_aligned:
+                if abs(self.err_x) > self.land_threshold:
+                    vy = (kp_xy * self.err_x + kd_xy * derr_x)
+                elif abs(self.err_y) > self.land_threshold:
+                    vx = (kp_xy * self.err_y + kd_xy * derr_y)
+            else:
+                print("aligning yaw",end="\r")
+                # freeze XY until yaw aligned
+                vx = 0.0
+                vy = 0.0
+
+
+            # # PD control
+            # vx = -(kp_xy * self.err_x + kd_xy * derr_x)
+            # vy =  (kp_xy * self.err_y + kd_xy * derr_y)
 
             # QR size scaling
             qr_area = (box[2] - box[0]) * (box[3] - box[1])
@@ -323,6 +355,7 @@ class QRTest(Node):
             if qr_centered and current_alt <= self.min_land_altitude:
                 self.get_logger().info("QR centered & low altitude → LAND")
                 self.qr_detection = False
+                self.set_mode("LAND")
                 self.trigger_final_land()
                 return
 
@@ -339,8 +372,6 @@ class QRTest(Node):
         else:
             if self.final_land_triggered:
                 return
-            if not self.qr_detection:
-                return
   
             self.get_logger().info("Entering RECOVERY!")
             # Derivative
@@ -353,6 +384,12 @@ class QRTest(Node):
             # P control
             vx = -(kp_xy * self.err_x)
             vy =  (kp_xy * self.err_y)
+
+            # fix weakest axis first 
+            if abs(self.err_x) > abs(self.err_y):
+                vx = 0.0
+            else:
+                vy = 0.0
 
             # Start moving towards last seen position
             print("moving to qr!",end="\r")
@@ -380,7 +417,8 @@ class QRTest(Node):
         print(f"ALT={current_alt:.3f} QR={'YES' if detections else 'NO'} "
               f"V=({vel_cmd.twist.linear.x:.2f},"
               f"{vel_cmd.twist.linear.y:.2f},"
-              f"{vel_cmd.twist.linear.z:.2f})",end='\r')
+              f"{vel_cmd.twist.linear.z:.2f},"
+              f"ERR=({self.err_x:.2f},{self.err_y:.2f})",end='\r')
     
     def run_mission(self):
         """Mission Execution"""
@@ -418,7 +456,6 @@ class QRTest(Node):
         
         print("[4] Navigate to GPS Coordinates 8.544100,76.904188,5")
         if not self.goto_gps(latitude=8.544100,longitude=76.904188,altitude=5.0):
-
             return
         self.qr_detection = True
         

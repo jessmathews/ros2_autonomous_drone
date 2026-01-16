@@ -10,7 +10,7 @@ source install/setup.bash
 | Script    | Average Simulation Time (minutes) |
 | :-------- | :-------: |
 | qr_test.py (with axis coupling)  | 3.092 | 
-| qr_test.py (no axis coupling) | TBD |
+| qr_test.py (no axis coupling) | 1.784 |
 
 
 ## Individual Metrics
@@ -24,4 +24,4 @@ source install/setup.bash
 ### No Axis Coupling 
 | Script    | Test 1 | Test 2 | Test 3 | Test 4 | Test 5 |
 | :-------- | :-------: | :-------: | :-------: | :-------: | :-------: |
-| qr_test.py | TBD | TBD | TBD | TBD | TBD |
+| qr_test.py | 1.92 | 1.82 | 1.83 | 1.68 | 1.67 |
