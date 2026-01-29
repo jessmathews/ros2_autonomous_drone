@@ -144,7 +144,7 @@ class GPSLandRTL(Node):
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.1)
             current_alt = self.current_pose.pose.position.z
-            print(f"Altitude: {current_alt:.2f}m / {target_alt}m ", end="\r")
+            print(f"Altitude: {current_alt:.2f}m / {target_alt:.2f}m ", end="\r")
 
             if abs(current_alt - target_alt) < tolerance:
                 self.get_logger().info(f"Reached Altitude {current_alt:.2f}m ")
