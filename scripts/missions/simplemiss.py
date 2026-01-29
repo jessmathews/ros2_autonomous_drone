@@ -359,7 +359,6 @@ def main():
     if dec.lower() == "n":
         raise Exception("ABORT")
     
-    print (f"Go to {lat}, {lon}")
     node = GPSLandRTL(lat, lon)
     
     try:    
