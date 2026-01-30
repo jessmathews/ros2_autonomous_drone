@@ -351,9 +351,8 @@ class QRTest(Node):
         current_alt = self.current_rel_alt
 
         #  PARAMETERS 
-        kp_xy = 0.004
-        kd_xy = 0.008
-
+        kp_xy = 0.002
+        kd_xy = 0.004
         xy_deadband = 10          # pixels
         max_xy_vel = 0.8
 
@@ -423,7 +422,7 @@ class QRTest(Node):
                 elif abs(self.err_y) > self.land_threshold:
                     vx = (kp_xy * self.err_y + kd_xy * derr_y)
             else:
-                print("aligning yaw")
+                print("aligning yaw",end='\r')
                 # freeze XY until yaw aligned
                 vx = 0.0
                 vy = 0.0
@@ -447,7 +446,7 @@ class QRTest(Node):
                 try:
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                     self.qr_data_value = decode(img)[0].data.decode('utf-8')
-                    print(self.qr_data_value)
+                    print(f"\n\nQR Data: {self.qr_data_value}\n\n\n")
                 except:
                     print()
             
